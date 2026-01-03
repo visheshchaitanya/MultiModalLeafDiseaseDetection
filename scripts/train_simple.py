@@ -35,9 +35,10 @@ def main():
     EPOCHS = 20
     BATCH_SIZE = 8
     LEARNING_RATE = 1e-4
-    DEVICE = 'cpu'  # Change to 'cuda' if GPU available
+    DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'  # Auto-detect GPU
     IMAGE_SIZE = 224
     NUM_WORKERS = 0  # Set to 0 for Windows compatibility
+    RESUME_CHECKPOINT = 'outputs/checkpoints/last_model.pt'  # Set to None to start fresh
 
     logger.info("=" * 80)
     logger.info("Multi-Modal Leaf Disease Detection - Simplified Training")
@@ -50,6 +51,12 @@ def main():
     # Setup device
     device = torch.device(DEVICE)
     logger.info(f"Using device: {device}")
+
+    if torch.cuda.is_available():
+        logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+        logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
+    else:
+        logger.info("No GPU available, using CPU")
 
     # Create output directory
     output_dir = Path('outputs')
@@ -172,10 +179,25 @@ def main():
     classification_criterion = nn.CrossEntropyLoss()
     text_criterion = nn.CrossEntropyLoss(ignore_index=vocabulary.get_word_index('<PAD>'))
 
-    # Training loop
+    # Resume from checkpoint if specified
+    start_epoch = 0
     best_val_loss = float('inf')
 
-    for epoch in range(EPOCHS):
+    if RESUME_CHECKPOINT and Path(RESUME_CHECKPOINT).exists():
+        logger.info(f"Loading checkpoint from {RESUME_CHECKPOINT}")
+        checkpoint = torch.load(RESUME_CHECKPOINT, map_location=device)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        best_val_loss = checkpoint.get('val_loss', float('inf'))
+        logger.info(f"Resumed from epoch {checkpoint['epoch'] + 1}")
+        logger.info(f"Previous best val loss: {best_val_loss:.4f}")
+    else:
+        logger.info("Starting training from scratch")
+
+    # Training loop
+    for epoch in range(start_epoch, EPOCHS):
         logger.info("=" * 80)
         logger.info(f"Epoch {epoch + 1}/{EPOCHS}")
         logger.info("=" * 80)
