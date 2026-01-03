@@ -1,0 +1,55 @@
+# Model Architecture Configuration
+
+image_encoder:
+  backbone: "resnet50"  # Options: resnet50, efficientnet_b0, efficientnet_b1
+  pretrained: true
+  freeze_layers: 7  # Number of initial layers to freeze (0 = no freezing)
+  output_dim: 512
+  dropout: 0.1
+
+tabular_encoder:
+  input_dim: 3  # temperature, humidity, soil_moisture
+  hidden_dims: [64]  # Hidden layer dimensions
+  output_dim: 128
+  activation: "relu"
+  use_batch_norm: true
+  dropout: 0.2
+
+fusion:
+  method: "concatenation"  # Options: concatenation, cross_attention
+  input_dim: 640  # image_encoder.output_dim + tabular_encoder.output_dim
+  hidden_dim: 512
+  output_dim: 512
+  activation: "relu"
+  use_layer_norm: true
+  dropout: 0.1
+
+transformer_decoder:
+  num_layers: 4
+  num_heads: 8
+  embed_dim: 512
+  ff_dim: 2048  # Feed-forward dimension
+  dropout: 0.1
+  attention_dropout: 0.1
+  activation: "gelu"
+  max_seq_len: 100
+  use_positional_encoding: true
+
+classification_head:
+  input_dim: 512  # Same as fusion.output_dim
+  hidden_dims: [256]
+  num_classes: 4
+  activation: "relu"
+  dropout: 0.3
+  use_batch_norm: false
+
+# Multi-task learning weights
+multi_task:
+  alpha: 0.7  # Text generation loss weight
+  beta: 0.3   # Classification loss weight
+  use_uncertainty_weighting: false  # Learn weights dynamically
+
+# Model initialization
+initialization:
+  method: "xavier_uniform"  # Options: xavier_uniform, xavier_normal, kaiming_uniform, kaiming_normal
+  bias_init: "zeros"

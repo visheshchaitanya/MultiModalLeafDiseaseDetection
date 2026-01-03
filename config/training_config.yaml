@@ -1,0 +1,116 @@
+# Training Configuration
+
+training:
+  num_epochs: 100
+  batch_size: 32
+  gradient_accumulation_steps: 1  # Effective batch size = batch_size * gradient_accumulation_steps
+  gradient_clip: 1.0
+  mixed_precision: true
+  seed: 42
+
+optimizer:
+  type: "adamw"  # Options: adam, adamw, sgd
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-5
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  amsgrad: false
+  # Different learning rates for different components (optional)
+  differential_lr:
+    enabled: false
+    image_encoder_lr: 1.0e-5  # Lower for pretrained encoder
+    other_lr: 1.0e-4
+
+scheduler:
+  type: "cosine"  # Options: cosine, reduce_on_plateau, step, exponential
+  warmup_epochs: 5
+  min_lr: 1.0e-6
+  # For ReduceLROnPlateau
+  patience: 5
+  factor: 0.5
+  # For StepLR
+  step_size: 10
+  gamma: 0.1
+
+early_stopping:
+  enabled: true
+  patience: 15
+  min_delta: 0.001
+  monitor: "val_loss"  # Options: val_loss, val_accuracy, val_bleu
+  mode: "min"  # Options: min (for loss), max (for accuracy/bleu)
+
+checkpointing:
+  save_best: true
+  save_last: true
+  save_frequency: 5  # Save checkpoint every N epochs
+  monitor: "val_loss"  # Metric to monitor for best checkpoint
+  mode: "min"
+  save_top_k: 3  # Keep top K best checkpoints
+
+data:
+  num_workers: 4
+  pin_memory: true
+  prefetch_factor: 2
+  persistent_workers: true
+  drop_last: true  # Drop last incomplete batch
+
+augmentation:
+  train:
+    enabled: true
+    random_resized_crop:
+      size: 224
+      scale: [0.8, 1.0]
+    horizontal_flip:
+      p: 0.5
+    vertical_flip:
+      p: 0.3
+    rotation:
+      limit: 15
+      p: 0.5
+    color_jitter:
+      brightness: 0.2
+      contrast: 0.2
+      saturation: 0.2
+      hue: 0.1
+      p: 0.5
+    gaussian_blur:
+      blur_limit: [3, 7]
+      p: 0.3
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+  val_test:
+    resize: 256
+    center_crop: 224
+    normalize:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+# Loss configuration
+loss:
+  classification:
+    type: "cross_entropy"
+    label_smoothing: 0.0
+    class_weights: null  # Will be computed from data if null
+
+  text_generation:
+    type: "cross_entropy"
+    ignore_index: 0  # Padding token index
+    label_smoothing: 0.0
+
+# Validation configuration
+validation:
+  frequency: 1  # Validate every N epochs
+  compute_metrics: true
+  save_predictions: true
+  visualize_samples: 10  # Number of samples to visualize
+
+# Logging
+logging:
+  log_frequency: 10  # Log every N batches
+  log_gradients: false
+  log_weights: false
+  log_learning_rate: true
+  log_images: true
+  log_images_frequency: 100  # Log images every N batches
